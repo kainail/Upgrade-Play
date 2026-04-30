@@ -291,10 +291,24 @@ body {
   cursor: pointer;
 }
 
+.lb-header-row {
+  display: grid;
+  grid-template-columns: 40px 1fr 70px 50px 50px 90px;
+  gap: 12px;
+  padding: 0 16px 8px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.15em;
+  color: var(--muted);
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 4px;
+}
+
 .lb-body {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 
 .lb-skeleton {
@@ -312,30 +326,46 @@ body {
 
 .lb-row {
   display: grid;
-  grid-template-columns: 40px 1fr 80px 60px 80px;
+  grid-template-columns: 40px 1fr 70px 50px 50px 90px;
   align-items: center;
   gap: 12px;
-  padding: 14px 16px;
+  padding: 12px 16px;
   background: var(--card-bg);
   border: 1px solid var(--border);
   border-radius: 6px;
   font-size: 13px;
+  transition: border-color 0.15s;
+}
+
+.lb-row-me {
+  border-color: rgba(230,57,70,0.3);
+  background: rgba(230,57,70,0.04);
+}
+
+.lb-you {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--crimson);
+  border: 1px solid var(--crimson);
+  border-radius: 3px;
+  padding: 1px 5px;
+  letter-spacing: 0.1em;
+  vertical-align: middle;
+  margin-left: 6px;
 }
 
 .lb-rank {
   font-family: var(--font-mono);
-  font-size: 12px;
-  color: var(--muted);
+  font-size: 14px;
+  font-weight: 700;
   text-align: center;
 }
-
-.lb-rank.top { color: var(--lime); font-weight: 700; }
 
 .lb-name { font-weight: 500; color: var(--white); }
 
 .lb-pct {
   font-family: var(--font-mono);
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 700;
   color: var(--lime);
   text-align: right;
@@ -343,7 +373,7 @@ body {
 
 .lb-grade {
   font-family: var(--font-display);
-  font-size: 18px;
+  font-size: 17px;
   text-align: center;
 }
 
@@ -351,7 +381,58 @@ body {
   font-family: var(--font-mono);
   font-size: 11px;
   color: var(--muted);
+  text-align: center;
+}
+
+.lb-last {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--muted);
   text-align: right;
+}
+
+/* Personal stats card */
+.personal-stats {
+  margin-top: 24px;
+  background: var(--card-bg);
+  border: 1px solid rgba(230,57,70,0.2);
+  border-radius: 8px;
+  padding: 20px 24px;
+}
+
+.ps-title {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--crimson);
+  letter-spacing: 0.2em;
+  margin-bottom: 16px;
+}
+
+.ps-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+
+.ps-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.ps-val {
+  font-family: var(--font-mono);
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--white);
+}
+
+.ps-label {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--muted);
+  letter-spacing: 0.1em;
 }
 
 .lb-empty {
@@ -1139,6 +1220,8 @@ body {
   .play-center { padding: 24px 16px; }
   .archetypes { grid-template-columns: repeat(2, 1fr); }
   .mode-buttons { grid-template-columns: 1fr; }
-  .lb-row { grid-template-columns: 32px 1fr 64px 48px; }
-  .lb-attempts { display: none; }
+  .lb-header-row { grid-template-columns: 32px 1fr 60px 44px; }
+  .lb-row { grid-template-columns: 32px 1fr 60px 44px; }
+  .lb-attempts, .lb-last { display: none; }
+  .ps-grid { grid-template-columns: repeat(2, 1fr); }
 }

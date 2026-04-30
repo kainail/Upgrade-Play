@@ -86,6 +86,18 @@ function initHome() {
 // ============================================================
 // LEADERBOARD
 // ============================================================
+const MEDAL_COLORS = ['#FFD700', '#C0C0C0', '#CD7F32'];
+
+function timeAgo(dateStr) {
+  if (!dateStr) return '—';
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 60)   return mins + 'm ago';
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24)    return hrs + 'h ago';
+  return Math.floor(hrs / 24) + 'd ago';
+}
+
 async function loadLeaderboard() {
   const body = document.getElementById('leaderboard-body');
   body.innerHTML = '<div class="lb-skeleton"></div><div class="lb-skeleton"></div><div class="lb-skeleton"></div>';
@@ -98,25 +110,57 @@ async function loadLeaderboard() {
     const rows = await res.json();
 
     if (!rows.length) {
-      body.innerHTML = '<p class="lb-empty">No scores yet — be the first.</p>';
-      return;
+      const minRuns = appState.lbTab === 'weekly' ? 3 : 5;
+      body.innerHTML = `<p class="lb-empty">No scores yet — be the first.<br><span style="font-size:11px;opacity:0.5">Requires ${minRuns}+ runs to qualify.</span></p>`;
+    } else {
+      body.innerHTML = rows.map((r, i) => {
+        const rankColor  = i < 3 ? MEDAL_COLORS[i] : 'var(--muted)';
+        const gradeColor = ['A+','A'].includes(r.best_grade) ? 'var(--lime)'
+                         : r.best_grade === 'B' ? '#F4D03F'
+                         : r.best_grade === 'C' ? 'var(--orange)'
+                         : 'var(--muted)';
+        const isMe = r.trainer_name === appState.trainerName;
+        return `
+          <div class="lb-row ${isMe ? 'lb-row-me' : ''}">
+            <span class="lb-rank" style="color:${rankColor}">${i < 3 ? '●' : '#' + (i+1)}</span>
+            <span class="lb-name">${escapeHtml(r.trainer_name)}${isMe ? ' <span class="lb-you">YOU</span>' : ''}</span>
+            <span class="lb-pct">${r.avg_pct}%</span>
+            <span class="lb-grade" style="color:${gradeColor}">${r.best_grade}</span>
+            <span class="lb-attempts">${r.attempts}</span>
+            <span class="lb-last">${timeAgo(r.last_active)}</span>
+          </div>`;
+      }).join('');
     }
-
-    body.innerHTML = rows.map((r, i) => {
-      const gradeColor = ['A+','A'].includes(r.best_grade) ? 'var(--lime)'
-                       : r.best_grade === 'B' ? '#F4D03F'
-                       : 'var(--muted)';
-      return `
-        <div class="lb-row">
-          <span class="lb-rank ${i < 3 ? 'top' : ''}">#${i + 1}</span>
-          <span class="lb-name">${escapeHtml(r.trainer_name)}</span>
-          <span class="lb-pct">${r.avg_pct}%</span>
-          <span class="lb-grade" style="color:${gradeColor}">${r.best_grade}</span>
-          <span class="lb-attempts">${r.attempts} runs</span>
-        </div>`;
-    }).join('');
   } catch {
     body.innerHTML = '<p class="lb-empty">Couldn\'t reach the leaderboard. Score saved locally.</p>';
+  }
+
+  if (appState.trainerName) loadPersonalStats();
+}
+
+async function loadPersonalStats() {
+  const el = document.getElementById('personal-stats');
+  try {
+    const res = await fetch('/api/leaderboard/me?trainer_name=' + encodeURIComponent(appState.trainerName));
+    const { stats } = await res.json();
+    if (!stats || !stats.attempts) { el.style.display = 'none'; return; }
+
+    const gradeColor = ['A+','A'].includes(stats.best_grade) ? 'var(--lime)'
+                     : stats.best_grade === 'B' ? '#F4D03F'
+                     : stats.best_grade === 'C' ? 'var(--orange)'
+                     : 'var(--muted)';
+
+    el.innerHTML = `
+      <div class="ps-title">YOUR STATS — ${escapeHtml(appState.trainerName).toUpperCase()}</div>
+      <div class="ps-grid">
+        <div class="ps-cell"><span class="ps-val">${stats.attempts}</span><span class="ps-label">RUNS</span></div>
+        <div class="ps-cell"><span class="ps-val">${stats.avg_pct}%</span><span class="ps-label">AVG SCORE</span></div>
+        <div class="ps-cell"><span class="ps-val">${stats.best_pct}%</span><span class="ps-label">BEST RUN</span></div>
+        <div class="ps-cell"><span class="ps-val" style="color:${gradeColor}">${stats.best_grade}</span><span class="ps-label">BEST GRADE</span></div>
+      </div>`;
+    el.style.display = 'block';
+  } catch {
+    el.style.display = 'none';
   }
 }
 
