@@ -3,7 +3,7 @@
 // ============================================================
 // STATE
 // ============================================================
-const state = {
+const appState = {
   trainerName: '',
   selectedScenario: null,
   selectedArchetype: null,
@@ -16,6 +16,14 @@ const SCENARIO_LABELS = {
   in_session: 'IN-SESSION PITCH',
   consult_1:  'CONSULT 1: WEEK 1',
   consult_2:  'CONSULT 2: THE CLOSE'
+};
+
+const GRADE_LABELS = {
+  'A+': 'CLOSER',
+  'A':  'PRO',
+  'B':  'SOLID',
+  'C':  'ROUGH BUT BREATHING',
+  'D':  'BACK TO THE TAPE'
 };
 
 // ============================================================
@@ -33,53 +41,42 @@ function showScreen(id) {
 function initHome() {
   const nameInput = document.getElementById('trainer-name');
 
-  // Restore name from localStorage
   const saved = localStorage.getItem('trainerName');
   if (saved) {
     nameInput.value = saved;
-    state.trainerName = saved;
+    appState.trainerName = saved;
   }
 
   nameInput.addEventListener('input', () => {
-    state.trainerName = nameInput.value.trim();
-    localStorage.setItem('trainerName', state.trainerName);
+    appState.trainerName = nameInput.value.trim();
+    localStorage.setItem('trainerName', appState.trainerName);
   });
 
-  // Scenario card clicks
   document.querySelectorAll('.scenario-card').forEach(card => {
-    card.querySelector('.btn-play').addEventListener('click', (e) => {
-      e.stopPropagation();
-      const scenario = card.dataset.scenario;
-      if (!state.trainerName) {
+    const openSetupFn = () => {
+      if (!appState.trainerName) {
         nameInput.focus();
         nameInput.style.borderColor = 'var(--crimson)';
         setTimeout(() => nameInput.style.borderColor = '', 1500);
         return;
       }
-      openSetup(scenario);
-    });
-
-    card.addEventListener('click', () => {
-      if (!state.trainerName) {
-        nameInput.focus();
-        return;
-      }
       openSetup(card.dataset.scenario);
-    });
+    };
+    card.querySelector('.btn-play').addEventListener('click', (e) => { e.stopPropagation(); openSetupFn(); });
+    card.addEventListener('click', openSetupFn);
   });
 
-  // Leaderboard tabs
   document.querySelectorAll('.lb-tab').forEach(tab => {
     tab.addEventListener('click', () => {
       document.querySelectorAll('.lb-tab').forEach(t => t.classList.remove('active'));
       tab.classList.add('active');
-      state.lbTab = tab.dataset.tab;
+      appState.lbTab = tab.dataset.tab;
       loadLeaderboard();
     });
   });
 
   document.getElementById('lb-scenario-filter').addEventListener('change', (e) => {
-    state.lbScenario = e.target.value;
+    appState.lbScenario = e.target.value;
     loadLeaderboard();
   });
 
@@ -93,8 +90,8 @@ async function loadLeaderboard() {
   const body = document.getElementById('leaderboard-body');
   body.innerHTML = '<div class="lb-skeleton"></div><div class="lb-skeleton"></div><div class="lb-skeleton"></div>';
 
-  const endpoint = state.lbTab === 'weekly' ? '/api/leaderboard/weekly' : '/api/leaderboard/all_time';
-  const params = state.lbScenario ? `?scenario=${state.lbScenario}` : '';
+  const endpoint = appState.lbTab === 'weekly' ? '/api/leaderboard/weekly' : '/api/leaderboard/all_time';
+  const params = appState.lbScenario ? `?scenario=${appState.lbScenario}` : '';
 
   try {
     const res = await fetch(endpoint + params);
@@ -106,7 +103,9 @@ async function loadLeaderboard() {
     }
 
     body.innerHTML = rows.map((r, i) => {
-      const gradeColor = r.best_grade === 'A+' ? 'var(--lime)' : r.best_grade === 'A' ? 'var(--lime)' : r.best_grade === 'B' ? '#F4D03F' : 'var(--muted)';
+      const gradeColor = ['A+','A'].includes(r.best_grade) ? 'var(--lime)'
+                       : r.best_grade === 'B' ? '#F4D03F'
+                       : 'var(--muted)';
       return `
         <div class="lb-row">
           <span class="lb-rank ${i < 3 ? 'top' : ''}">#${i + 1}</span>
@@ -125,17 +124,13 @@ async function loadLeaderboard() {
 // SETUP SCREEN
 // ============================================================
 function openSetup(scenario) {
-  state.selectedScenario = scenario;
-  state.selectedArchetype = null;
-  state.selectedMode = 'mc';
+  appState.selectedScenario = scenario;
+  appState.selectedArchetype = null;
+  appState.selectedMode = 'mc';
 
   document.getElementById('setup-scenario-label').textContent = SCENARIO_LABELS[scenario] || scenario;
-
-  // Reset selections
   document.querySelectorAll('.archetype-card').forEach(c => c.classList.remove('selected'));
-  document.querySelectorAll('.btn-mode').forEach(b => {
-    b.classList.toggle('active', b.dataset.mode === 'mc');
-  });
+  document.querySelectorAll('.btn-mode').forEach(b => b.classList.toggle('active', b.dataset.mode === 'mc'));
 
   showScreen('screen-setup');
 }
@@ -143,28 +138,24 @@ function openSetup(scenario) {
 function initSetup() {
   document.getElementById('back-to-home').addEventListener('click', () => showScreen('screen-home'));
 
-  // Archetype selection
   document.querySelectorAll('.archetype-card').forEach(card => {
     card.addEventListener('click', () => {
       document.querySelectorAll('.archetype-card').forEach(c => c.classList.remove('selected'));
       card.classList.add('selected');
-      state.selectedArchetype = card.dataset.archetype;
+      appState.selectedArchetype = card.dataset.archetype;
     });
   });
 
-  // Random archetype
   document.getElementById('btn-random').addEventListener('click', () => {
     const cards = [...document.querySelectorAll('.archetype-card')];
     const pick = cards[Math.floor(Math.random() * cards.length)];
     document.querySelectorAll('.archetype-card').forEach(c => c.classList.remove('selected'));
     pick.classList.add('selected');
-    state.selectedArchetype = pick.dataset.archetype;
+    appState.selectedArchetype = pick.dataset.archetype;
   });
 
-  // Mode selection
   document.querySelectorAll('.btn-mode').forEach(btn => {
     btn.addEventListener('click', () => {
-      // Check voice availability
       if (btn.dataset.mode === 'voice') {
         const hasVoice = ('speechSynthesis' in window) &&
                          ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window);
@@ -175,19 +166,346 @@ function initSetup() {
       }
       document.querySelectorAll('.btn-mode').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
-      state.selectedMode = btn.dataset.mode;
+      appState.selectedMode = btn.dataset.mode;
     });
   });
 
-  // Start session
   document.getElementById('btn-start').addEventListener('click', () => {
-    if (!state.selectedArchetype) {
-      document.querySelector('.archetypes').style.outline = '1px solid var(--crimson)';
-      setTimeout(() => document.querySelector('.archetypes').style.outline = '', 1500);
+    if (!appState.selectedArchetype) {
+      const arc = document.querySelector('.archetypes');
+      arc.style.outline = '1px solid var(--crimson)';
+      setTimeout(() => arc.style.outline = '', 1500);
       return;
     }
-    // Scenario engine comes in Step 3 — placeholder for now
-    alert(`Coming in Step 3!\n\nScenario: ${SCENARIO_LABELS[state.selectedScenario]}\nOpponent: ${state.selectedArchetype}\nMode: ${state.selectedMode}`);
+    game.start(
+      appState.selectedScenario,
+      appState.selectedArchetype,
+      appState.selectedMode,
+      appState.trainerName
+    );
+  });
+}
+
+// ============================================================
+// GAME ENGINE
+// ============================================================
+const game = {
+  scenario: null,
+  archetype: null,
+  archetypeId: null,
+  scenarioId: null,
+  mode: null,
+  trainerName: '',
+  turnIndex: 0,
+  mood: 0,
+  score: 0,
+  scoreByCategory: null,
+  walkedOut: false,
+
+  start(scenarioId, archetypeId, mode, trainerName) {
+    this.scenario    = window.SCENARIOS[scenarioId];
+    this.archetype   = window.ARCHETYPES[archetypeId];
+    this.scenarioId  = scenarioId;
+    this.archetypeId = archetypeId;
+    this.mode        = mode;
+    this.trainerName = trainerName;
+    this.turnIndex   = 0;
+    this.mood        = this.archetype.startingMood;
+    this.score       = 0;
+    this.scoreByCategory = { DISARM: 0, GAP: 0, ANCHOR: 0, CLOSE: 0, OBJECTION: 0 };
+    this.walkedOut   = false;
+
+    // Set NPC avatar color
+    const sil = document.getElementById('npc-silhouette');
+    sil.style.background = `radial-gradient(circle at 35% 35%, ${this.archetype.color}, rgba(0,0,0,0.8))`;
+
+    document.getElementById('npc-archetype-name').textContent =
+      this.archetype.name.toUpperCase();
+
+    showScreen('screen-play');
+    this.renderTurn();
+  },
+
+  get currentTurn() {
+    return this.scenario.turns[this.turnIndex];
+  },
+
+  gameState() {
+    return { mood: this.mood, turnIndex: this.turnIndex };
+  },
+
+  renderTurn() {
+    const turn = this.currentTurn;
+    const gs = this.gameState();
+
+    document.getElementById('turn-number').textContent = this.turnIndex + 1;
+    document.getElementById('turn-total').textContent  = this.scenario.totalTurns;
+
+    const npcLine = turn.getNpcLine(gs);
+    document.getElementById('npc-dialogue-text').textContent = `"${npcLine}"`;
+
+    document.getElementById('feedback-area').style.display = 'none';
+
+    const choices = turn.getChoices(gs);
+    this.renderChoices(choices);
+
+    this.updateMoodDisplay(false);
+    this.updateScoreDisplay();
+    this.updateBreakdown();
+  },
+
+  renderChoices(choices) {
+    const area = document.getElementById('choices-area');
+    area.innerHTML = '';
+    choices.forEach((choice) => {
+      const btn = document.createElement('button');
+      btn.className = 'choice-btn';
+      btn.textContent = choice.text;
+      btn.addEventListener('click', () => this.selectChoice(choice, btn));
+      area.appendChild(btn);
+    });
+  },
+
+  selectChoice(choice, btn) {
+    document.querySelectorAll('.choice-btn').forEach(b => { b.disabled = true; });
+    btn.classList.add('selected', `quality-${choice.quality}`);
+
+    // Apply archetype mood modifier
+    const raw = choice.moodDelta;
+    const modded = raw >= 0
+      ? Math.round(raw * this.archetype.posMult)
+      : Math.round(raw * this.archetype.negMult);
+
+    this.score += choice.points;
+    this.scoreByCategory[choice.category] =
+      (this.scoreByCategory[choice.category] || 0) + choice.points;
+    this.mood = Math.max(0, Math.min(100, this.mood + modded));
+
+    // Animations
+    spawnScoreFloat(choice.points, btn);
+    if (choice.quality === 'bad') shakeNpc();
+    this.updateMoodDisplay(true);
+    this.updateScoreDisplay();
+    this.updateBreakdown();
+
+    // Walked out gate
+    if (this.mood <= 0) {
+      this.walkedOut = true;
+      this.showFeedback(choice, true);
+      return;
+    }
+
+    this.showFeedback(choice, false);
+  },
+
+  showFeedback(choice, walkedOut) {
+    const area  = document.getElementById('feedback-area');
+    const badge = document.getElementById('feedback-score-badge');
+    const text  = document.getElementById('feedback-text');
+    const cont  = document.getElementById('btn-continue');
+
+    const pts = choice.points;
+    badge.textContent = (pts >= 0 ? '+' : '') + pts + ' pts';
+    badge.className   = `feedback-score-badge quality-${choice.quality}`;
+    text.textContent  = walkedOut
+      ? choice.feedback + ' — They walked out.'
+      : choice.feedback;
+
+    const isLast = this.turnIndex >= this.scenario.turns.length - 1;
+    cont.textContent = walkedOut || isLast ? 'SEE RESULTS' : 'CONTINUE →';
+    cont.onclick = () => walkedOut ? this.endScenario() : this.advance();
+
+    area.style.display = 'flex';
+  },
+
+  advance() {
+    this.turnIndex++;
+    if (this.turnIndex >= this.scenario.turns.length) {
+      this.endScenario();
+    } else {
+      this.renderTurn();
+    }
+  },
+
+  endScenario() {
+    showEndScreen(this);
+    this.submitScore();
+  },
+
+  updateMoodDisplay(animate) {
+    const pct  = this.mood;
+    const fill  = document.getElementById('mood-bar-fill');
+    const label = document.getElementById('mood-label');
+    const val   = document.getElementById('mood-value');
+
+    fill.style.height = pct + '%';
+
+    const color = pct <= 25  ? 'var(--crimson)'
+                : pct <= 50  ? 'var(--orange)'
+                : pct <= 75  ? '#F4D03F'
+                : 'var(--lime)';
+    fill.style.background = color;
+
+    label.textContent = pct <= 25  ? 'Skeptical'
+                      : pct <= 50  ? 'Mildly interested'
+                      : pct <= 75  ? 'Bought in'
+                      : 'Ready to sign';
+
+    val.textContent = pct;
+
+    if (animate) {
+      fill.classList.remove('mood-pulse');
+      void fill.offsetWidth; // reflow to restart animation
+      fill.classList.add('mood-pulse');
+    }
+  },
+
+  updateScoreDisplay() {
+    document.getElementById('live-score').textContent = Math.max(0, this.score);
+  },
+
+  updateBreakdown() {
+    Object.keys(this.scoreByCategory).forEach(cat => {
+      const el = document.getElementById('bd-' + cat);
+      if (el) el.textContent = Math.max(0, this.scoreByCategory[cat] || 0);
+    });
+  },
+
+  async submitScore() {
+    const maxScore  = this.scenario.maxScore;
+    const finalScore = Math.max(0, this.score);
+    try {
+      await fetch('/api/attempts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          trainer_name: this.trainerName,
+          scenario:     this.scenarioId,
+          archetype:    this.archetypeId,
+          mode:         this.mode,
+          score:        finalScore,
+          max_score:    maxScore,
+          walked_out:   this.walkedOut ? 1 : 0
+        })
+      });
+    } catch {
+      // Silently fail — leaderboard is a nice-to-have
+    }
+  }
+};
+
+// ============================================================
+// ANIMATIONS
+// ============================================================
+function spawnScoreFloat(points, anchorEl) {
+  const float = document.createElement('div');
+  float.className = 'score-float';
+  float.style.position = 'fixed';
+  float.style.zIndex = '9000';
+  float.style.fontFamily = 'var(--font-mono)';
+  float.style.fontSize = '20px';
+  float.style.fontWeight = '700';
+  float.style.pointerEvents = 'none';
+  float.style.color = points >= 0 ? 'var(--lime)' : 'var(--crimson)';
+  float.textContent = (points >= 0 ? '+' : '') + points;
+
+  const rect = anchorEl.getBoundingClientRect();
+  float.style.left = (rect.left + rect.width / 2) + 'px';
+  float.style.top  = (rect.top) + 'px';
+  float.style.transform = 'translateX(-50%)';
+
+  document.body.appendChild(float);
+
+  if (float.animate) {
+    float.animate(
+      [{ opacity: 1, transform: 'translateX(-50%) translateY(0)' },
+       { opacity: 0, transform: 'translateX(-50%) translateY(-40px)' }],
+      { duration: 800, easing: 'ease-out' }
+    ).onfinish = () => float.remove();
+  } else {
+    setTimeout(() => float.remove(), 800);
+  }
+}
+
+function shakeNpc() {
+  const box = document.getElementById('npc-dialogue-box');
+  box.classList.remove('shake');
+  void box.offsetWidth;
+  box.classList.add('shake');
+  setTimeout(() => box.classList.remove('shake'), 300);
+}
+
+// ============================================================
+// END SCREEN
+// ============================================================
+function computeGrade(pct) {
+  if (pct >= 90) return 'A+';
+  if (pct >= 80) return 'A';
+  if (pct >= 70) return 'B';
+  if (pct >= 60) return 'C';
+  return 'D';
+}
+
+function showEndScreen(g) {
+  const maxScore   = g.scenario.maxScore;
+  const finalScore = Math.max(0, g.score);
+  const pct        = g.walkedOut ? 0 : Math.round((finalScore / maxScore) * 100);
+  const grade      = g.walkedOut ? 'D' : computeGrade(pct);
+
+  document.getElementById('end-walked-out-banner').style.display =
+    g.walkedOut ? 'block' : 'none';
+
+  const gradeEl = document.getElementById('end-grade');
+  gradeEl.textContent = grade;
+  gradeEl.style.color = ['A+','A'].includes(grade) ? 'var(--lime)'
+                      : grade === 'B' ? '#F4D03F'
+                      : grade === 'C' ? 'var(--orange)'
+                      : 'var(--crimson)';
+
+  document.getElementById('end-grade-label').textContent = GRADE_LABELS[grade] || '';
+  document.getElementById('end-score-max').textContent   = maxScore;
+  document.getElementById('end-pct').textContent         = pct + '%';
+
+  // Count-up animation
+  const numEl = document.getElementById('end-score-num');
+  numEl.textContent = '0';
+  countUp(numEl, finalScore, 1200);
+
+  // Breakdown
+  const bdEl = document.getElementById('end-breakdown');
+  bdEl.innerHTML = Object.entries(g.scoreByCategory).map(([cat, pts]) => `
+    <div class="end-bd-item">
+      <span class="end-bd-cat">${cat}</span>
+      <span class="end-bd-pts">${Math.max(0, pts)}</span>
+    </div>
+  `).join('');
+
+  showScreen('screen-end');
+}
+
+function countUp(el, target, duration) {
+  const start = performance.now();
+  function frame(now) {
+    const t = Math.min((now - start) / duration, 1);
+    el.textContent = Math.round(t * target);
+    if (t < 1) requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+}
+
+function initEndScreen() {
+  document.getElementById('btn-replay').addEventListener('click', () => {
+    game.start(
+      game.scenarioId,
+      game.archetypeId,
+      game.mode,
+      game.trainerName
+    );
+  });
+
+  document.getElementById('btn-new').addEventListener('click', () => {
+    showScreen('screen-home');
+    loadLeaderboard();
   });
 }
 
@@ -195,7 +513,10 @@ function initSetup() {
 // UTILS
 // ============================================================
 function escapeHtml(str) {
-  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
 }
 
 // ============================================================
@@ -204,4 +525,5 @@ function escapeHtml(str) {
 document.addEventListener('DOMContentLoaded', () => {
   initHome();
   initSetup();
+  initEndScreen();
 });

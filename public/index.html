@@ -177,6 +177,84 @@
     </div>
   </div>
 
+  <!-- PLAY SCREEN -->
+  <div id="screen-play" class="screen">
+    <div class="play-layout">
+
+      <!-- Left Rail -->
+      <aside class="play-left">
+        <div class="npc-avatar-wrap">
+          <div class="npc-silhouette" id="npc-silhouette"></div>
+          <div class="npc-archetype-name" id="npc-archetype-name">THE SKEPTIC</div>
+        </div>
+        <div class="mood-section">
+          <div class="mood-label-text" id="mood-label">Skeptical</div>
+          <div class="mood-bar-track" aria-live="polite" aria-label="Client mood">
+            <div class="mood-bar-fill" id="mood-bar-fill"></div>
+          </div>
+          <div class="mood-value-display" id="mood-value">30</div>
+        </div>
+        <div class="live-score-section">
+          <div class="live-score-label">SCORE</div>
+          <div class="live-score-value" id="live-score">0</div>
+        </div>
+      </aside>
+
+      <!-- Center -->
+      <main class="play-center">
+        <div class="npc-dialogue-box" id="npc-dialogue-box">
+          <p class="npc-dialogue-text" id="npc-dialogue-text"></p>
+        </div>
+        <div class="choices-area" id="choices-area"></div>
+        <div class="feedback-area" id="feedback-area" style="display:none">
+          <div class="feedback-score-badge" id="feedback-score-badge"></div>
+          <p class="feedback-text" id="feedback-text"></p>
+          <button class="btn-continue" id="btn-continue">CONTINUE →</button>
+        </div>
+      </main>
+
+      <!-- Right Rail -->
+      <aside class="play-right">
+        <div class="turn-widget">
+          <div class="turn-label">MOVE</div>
+          <div class="turn-number" id="turn-number">1</div>
+          <div class="turn-of">OF <span id="turn-total">5</span></div>
+        </div>
+        <div class="score-breakdown">
+          <div class="bd-title">BREAKDOWN</div>
+          <div class="bd-row"><span class="bd-cat">DISARM</span><span class="bd-pts" id="bd-DISARM">0</span></div>
+          <div class="bd-row"><span class="bd-cat">GAP</span><span class="bd-pts" id="bd-GAP">0</span></div>
+          <div class="bd-row"><span class="bd-cat">ANCHOR</span><span class="bd-pts" id="bd-ANCHOR">0</span></div>
+          <div class="bd-row"><span class="bd-cat">CLOSE</span><span class="bd-pts" id="bd-CLOSE">0</span></div>
+          <div class="bd-row"><span class="bd-cat">OBJECTION</span><span class="bd-pts" id="bd-OBJECTION">0</span></div>
+        </div>
+      </aside>
+
+    </div>
+  </div>
+
+  <!-- END SCREEN -->
+  <div id="screen-end" class="screen">
+    <div class="end-layout">
+      <div class="end-walked-out-banner" id="end-walked-out-banner" style="display:none">WALKED OUT</div>
+      <div class="end-grade" id="end-grade">A+</div>
+      <div class="end-grade-label" id="end-grade-label">CLOSER</div>
+      <div class="end-score-display">
+        <span class="end-score-num" id="end-score-num">0</span>
+        <span class="end-score-sep"> / </span>
+        <span class="end-score-max" id="end-score-max">50</span>
+      </div>
+      <div class="end-pct" id="end-pct">0%</div>
+      <div class="end-breakdown" id="end-breakdown"></div>
+      <div class="end-buttons">
+        <button class="btn-replay" id="btn-replay">REPLAY</button>
+        <button class="btn-new" id="btn-new">NEW SCENARIO</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="data/archetypes.js"></script>
+  <script src="data/scenarios.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
