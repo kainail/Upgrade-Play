@@ -4,9 +4,179 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>THE UPGRADE GYM</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <h1>THE UPGRADE GYM — Coming Soon</h1>
-  <p>Backend is live. Frontend coming in Step 2.</p>
+  <div class="noise"></div>
+
+  <!-- HOME SCREEN -->
+  <div id="screen-home" class="screen active">
+    <header class="home-header">
+      <h1 class="title">THE UPGRADE GYM</h1>
+      <p class="subtitle">Where coaches sharpen the close.</p>
+      <div class="name-input-wrap">
+        <input type="text" id="trainer-name" placeholder="Enter your name" autocomplete="off" maxlength="32">
+      </div>
+    </header>
+
+    <section class="scenarios">
+      <div class="scenario-card" data-scenario="in_session">
+        <div class="scenario-difficulty">
+          <span class="glove">🥊</span>
+        </div>
+        <div class="scenario-label">SCENARIO 01</div>
+        <h2 class="scenario-title">IN-SESSION<br>PITCH</h2>
+        <p class="scenario-desc">5 turns. Plant the seed, earn the yes. Your client's mid-session — go.</p>
+        <div class="scenario-meta">
+          <span class="meta-tag">5 TURNS</span>
+          <span class="meta-tag">50 PTS MAX</span>
+        </div>
+        <button class="btn-play">ENTER THE RING</button>
+      </div>
+
+      <div class="scenario-card" data-scenario="consult_1">
+        <div class="scenario-difficulty">
+          <span class="glove">🥊</span><span class="glove">🥊</span>
+        </div>
+        <div class="scenario-label">SCENARIO 02</div>
+        <h2 class="scenario-title">CONSULT 1:<br>WEEK 1</h2>
+        <p class="scenario-desc">8 turns. Don't sell. Plant seeds. BAMFAM Consult 2 before they leave.</p>
+        <div class="scenario-meta">
+          <span class="meta-tag">8 TURNS</span>
+          <span class="meta-tag">80 PTS MAX</span>
+        </div>
+        <button class="btn-play">ENTER THE RING</button>
+      </div>
+
+      <div class="scenario-card featured" data-scenario="consult_2">
+        <div class="scenario-difficulty">
+          <span class="glove">🥊</span><span class="glove">🥊</span><span class="glove">🥊</span>
+        </div>
+        <div class="scenario-label">SCENARIO 03</div>
+        <h2 class="scenario-title">CONSULT 2:<br>THE CLOSE</h2>
+        <p class="scenario-desc">15 turns. NEPQ + Hormozi. Full value stack. Assumed which-pile. Boss fight.</p>
+        <div class="scenario-meta">
+          <span class="meta-tag">15 TURNS</span>
+          <span class="meta-tag">150 PTS MAX</span>
+        </div>
+        <button class="btn-play">ENTER THE RING</button>
+      </div>
+    </section>
+
+    <section class="leaderboard-section">
+      <div class="lb-tabs">
+        <button class="lb-tab active" data-tab="weekly">THIS WEEK'S LEADERBOARD</button>
+        <button class="lb-tab" data-tab="alltime">HALL OF FAME</button>
+      </div>
+      <div class="lb-filter">
+        <select id="lb-scenario-filter">
+          <option value="">ALL SCENARIOS</option>
+          <option value="in_session">IN-SESSION PITCH</option>
+          <option value="consult_1">CONSULT 1</option>
+          <option value="consult_2">CONSULT 2: THE CLOSE</option>
+        </select>
+      </div>
+      <div id="leaderboard-body" class="lb-body">
+        <div class="lb-skeleton"></div>
+        <div class="lb-skeleton"></div>
+        <div class="lb-skeleton"></div>
+      </div>
+    </section>
+  </div>
+
+  <!-- SETUP SCREEN -->
+  <div id="screen-setup" class="screen">
+    <button class="btn-back" id="back-to-home">← BACK</button>
+    <div class="setup-header">
+      <div class="setup-scenario-label" id="setup-scenario-label">IN-SESSION PITCH</div>
+      <h2 class="setup-title">PICK YOUR OPPONENT</h2>
+    </div>
+
+    <section class="archetypes">
+      <div class="archetype-card" data-archetype="skeptic">
+        <div class="archetype-icon skeptic-icon"></div>
+        <h3 class="archetype-name">THE SKEPTIC</h3>
+        <p class="archetype-quote">"I'm fine where I'm at."</p>
+        <div class="archetype-stats">
+          <span class="stat-tag mood-low">MOOD: 30</span>
+          <span class="stat-tag resist-high">RESISTANCE: HIGH</span>
+        </div>
+      </div>
+
+      <div class="archetype-card" data-archetype="ghost_spouse">
+        <div class="archetype-icon ghost-icon"></div>
+        <h3 class="archetype-name">THE GHOST-SPOUSE</h3>
+        <p class="archetype-quote">"Let me check with my wife."</p>
+        <div class="archetype-stats">
+          <span class="stat-tag mood-mid">MOOD: 55</span>
+          <span class="stat-tag resist-mid">RESISTANCE: MED</span>
+        </div>
+      </div>
+
+      <div class="archetype-card" data-archetype="price_shopper">
+        <div class="archetype-icon price-icon"></div>
+        <h3 class="archetype-name">THE PRICE SHOPPER</h3>
+        <p class="archetype-quote">"$45/week is a lot."</p>
+        <div class="archetype-stats">
+          <span class="stat-tag mood-mid">MOOD: 45</span>
+          <span class="stat-tag resist-high">RESISTANCE: HIGH</span>
+        </div>
+      </div>
+
+      <div class="archetype-card" data-archetype="dream_client">
+        <div class="archetype-icon dream-icon"></div>
+        <h3 class="archetype-name">THE DREAM CLIENT</h3>
+        <p class="archetype-quote">"Tell me more..."</p>
+        <div class="archetype-stats">
+          <span class="stat-tag mood-high">MOOD: 75</span>
+          <span class="stat-tag resist-low">RESISTANCE: LOW</span>
+        </div>
+      </div>
+
+      <div class="archetype-card" data-archetype="overthinker">
+        <div class="archetype-icon think-icon"></div>
+        <h3 class="archetype-name">THE OVERTHINKER</h3>
+        <p class="archetype-quote">"Can I have a few days?"</p>
+        <div class="archetype-stats">
+          <span class="stat-tag mood-mid">MOOD: 50</span>
+          <span class="stat-tag resist-mid">RESISTANCE: MED</span>
+        </div>
+      </div>
+    </section>
+
+    <div class="random-wrap">
+      <button class="btn-random" id="btn-random">⚡ RANDOM OPPONENT</button>
+    </div>
+
+    <div class="mode-section">
+      <h3 class="mode-title">PICK YOUR MODE</h3>
+      <div class="mode-buttons">
+        <button class="btn-mode active" data-mode="mc">
+          <span class="mode-icon">☰</span>
+          <span class="mode-name">MULTIPLE CHOICE</span>
+          <span class="mode-desc">Pick from options</span>
+        </button>
+        <button class="btn-mode" data-mode="free_text">
+          <span class="mode-icon">✎</span>
+          <span class="mode-name">FREE TEXT</span>
+          <span class="mode-desc">Type your response</span>
+        </button>
+        <button class="btn-mode" data-mode="voice">
+          <span class="mode-icon">🎙</span>
+          <span class="mode-name">VOICE</span>
+          <span class="mode-desc">Speak your response</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="start-wrap">
+      <button class="btn-start" id="btn-start">START SESSION</button>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
 </body>
 </html>
