@@ -333,10 +333,12 @@ const game = {
   },
 
   updateMoodDisplay(animate) {
-    const pct  = this.mood;
+    const pct   = this.mood;
     const fill  = document.getElementById('mood-bar-fill');
     const label = document.getElementById('mood-label');
     const val   = document.getElementById('mood-value');
+    const sil   = document.getElementById('npc-silhouette');
+    const play  = document.getElementById('screen-play');
 
     fill.style.height = pct + '%';
 
@@ -350,12 +352,23 @@ const game = {
                       : pct <= 50  ? 'Mildly interested'
                       : pct <= 75  ? 'Bought in'
                       : 'Ready to sign';
+    label.style.color = color;
+    val.textContent   = pct;
+    val.style.color   = color;
 
-    val.textContent = pct;
+    // NPC silhouette state
+    sil.className = 'npc-silhouette';
+    if      (pct <= 25) sil.classList.add('npc-mood-low');
+    else if (pct <= 50) sil.classList.add('npc-mood-neutral');
+    else if (pct <= 75) sil.classList.add('npc-mood-warm');
+    else                sil.classList.add('npc-mood-hot');
+
+    // 95+ lime glow on whole screen
+    play.classList.toggle('mood-glow', pct >= 95);
 
     if (animate) {
       fill.classList.remove('mood-pulse');
-      void fill.offsetWidth; // reflow to restart animation
+      void fill.offsetWidth;
       fill.classList.add('mood-pulse');
     }
   },
@@ -446,7 +459,48 @@ function computeGrade(pct) {
   return 'D';
 }
 
+// Coaching tips per category (good vs bad performance)
+const TIPS = {
+  DISARM: {
+    good: "Your disarm was sharp — you built curiosity before they could resist.",
+    bad:  "Work on your disarm. Lead with a hook or permission ask, not logistics."
+  },
+  GAP: {
+    good: "You surfaced the gap well — they felt the cost of staying where they are.",
+    bad:  "Use consequence questions to let them feel the gap themselves. Don't tell them — ask them."
+  },
+  ANCHOR: {
+    good: "You anchored the data perfectly — frequency as the variable, scan as proof.",
+    bad:  "Anchor the result to the variable. 'The ONLY thing that changed was frequency' — say it like physics."
+  },
+  CLOSE: {
+    good: "Clean close — BAMFAM executed, A/B not yes/no, no escape hatches.",
+    bad:  "Your close leaked. A or B, never 'do you want to.' Always book on the spot."
+  },
+  OBJECTION: {
+    good: "Objection handling was on point — you surfaced the real concern instead of folding.",
+    bad:  "Don't argue price. Surface the real objection with NEPQ, then solve it."
+  }
+};
+
+function buildCoachingTip(scoreByCategory) {
+  const entries = Object.entries(scoreByCategory).filter(([, v]) => v !== 0);
+  if (!entries.length) return '';
+
+  const best  = entries.reduce((a, b) => a[1] > b[1] ? a : b);
+  const worst = entries.reduce((a, b) => a[1] < b[1] ? a : b);
+
+  const praise = TIPS[best[0]]?.good  || '';
+  const fix    = TIPS[worst[0]]?.bad  || '';
+
+  if (best[0] === worst[0]) return praise;
+  return [praise, fix].filter(Boolean).join(' ');
+}
+
 function showEndScreen(g) {
+  // Remove any lingering mood glow
+  document.getElementById('screen-play').classList.remove('mood-glow');
+
   const maxScore   = g.scenario.maxScore;
   const finalScore = Math.max(0, g.score);
   const pct        = g.walkedOut ? 0 : Math.round((finalScore / maxScore) * 100);
@@ -473,12 +527,20 @@ function showEndScreen(g) {
 
   // Breakdown
   const bdEl = document.getElementById('end-breakdown');
-  bdEl.innerHTML = Object.entries(g.scoreByCategory).map(([cat, pts]) => `
-    <div class="end-bd-item">
-      <span class="end-bd-cat">${cat}</span>
-      <span class="end-bd-pts">${Math.max(0, pts)}</span>
-    </div>
-  `).join('');
+  bdEl.innerHTML = Object.entries(g.scoreByCategory).map(([cat, pts]) => {
+    const clamped = Math.max(0, pts);
+    const color = clamped > 0 ? 'var(--lime)' : pts < 0 ? 'var(--crimson)' : 'var(--muted)';
+    return `
+      <div class="end-bd-item">
+        <span class="end-bd-cat">${cat}</span>
+        <span class="end-bd-pts" style="color:${color}">${clamped}</span>
+      </div>`;
+  }).join('');
+
+  // Coaching tip
+  const tip = buildCoachingTip(g.scoreByCategory);
+  document.getElementById('end-tip').textContent = tip;
+  document.getElementById('end-tip').style.display = tip ? 'block' : 'none';
 
   showScreen('screen-end');
 }
@@ -506,6 +568,15 @@ function initEndScreen() {
   document.getElementById('btn-new').addEventListener('click', () => {
     showScreen('screen-home');
     loadLeaderboard();
+  });
+
+  document.getElementById('btn-lb').addEventListener('click', () => {
+    showScreen('screen-home');
+    loadLeaderboard();
+    setTimeout(() => {
+      document.querySelector('.leaderboard-section')
+        .scrollIntoView({ behavior: 'smooth' });
+    }, 100);
   });
 }
 
