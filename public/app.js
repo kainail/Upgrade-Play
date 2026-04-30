@@ -291,6 +291,12 @@ const game = {
     document.getElementById('npc-dialogue-text').textContent = `"${npcLine}"`;
     document.getElementById('feedback-area').style.display = 'none';
 
+    // Animate dialogue box entrance each turn
+    const dialogBox = document.getElementById('npc-dialogue-box');
+    dialogBox.classList.remove('npc-fresh');
+    void dialogBox.offsetWidth;
+    dialogBox.classList.add('npc-fresh');
+
     const area = document.getElementById('choices-area');
     area.innerHTML = '';
 
@@ -315,9 +321,10 @@ const game = {
       return;
     }
 
-    choices.forEach((choice) => {
+    choices.forEach((choice, i) => {
       const btn = document.createElement('button');
       btn.className = 'choice-btn';
+      btn.style.animationDelay = (i * 0.05) + 's';
       btn.textContent = choice.text;
       btn.addEventListener('click', () => this.selectChoice(choice, btn));
       area.appendChild(btn);
@@ -668,6 +675,8 @@ const game = {
     const play  = document.getElementById('screen-play');
 
     fill.style.height = pct + '%';
+    // Mobile horizontal bar uses CSS var --mood-w
+    fill.parentElement.style.setProperty('--mood-w', pct + '%');
 
     const color = pct <= 25  ? 'var(--crimson)'
                 : pct <= 50  ? 'var(--orange)'
@@ -701,7 +710,11 @@ const game = {
   },
 
   updateScoreDisplay() {
-    document.getElementById('live-score').textContent = Math.max(0, this.score);
+    const el = document.getElementById('live-score');
+    el.textContent = Math.max(0, this.score);
+    el.classList.remove('score-flash');
+    void el.offsetWidth;
+    el.classList.add('score-flash');
   },
 
   updateBreakdown() {

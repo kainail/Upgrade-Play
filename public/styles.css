@@ -839,6 +839,12 @@ body {
   color: var(--lime);
 }
 
+@keyframes scoreFlash {
+  0%   { color: var(--white); transform: scale(1.25); }
+  100% { color: var(--lime);  transform: scale(1); }
+}
+.live-score-value.score-flash { animation: scoreFlash 350ms var(--ease); }
+
 /* --- Center --- */
 .play-center {
   padding: 40px 32px;
@@ -877,7 +883,8 @@ body {
   80%  { transform: translateX(2px); }
   100% { transform: translateX(0); }
 }
-.npc-dialogue-box.shake { animation: shake 200ms ease; }
+.npc-dialogue-box.shake     { animation: shake 200ms ease; }
+.npc-dialogue-box.npc-fresh { animation: fadeUp 0.25s var(--ease) both; }
 
 /* Choices */
 .choices-area {
@@ -900,6 +907,7 @@ body {
   text-align: left;
   transition: all 0.15s;
   width: 100%;
+  animation: fadeUp 0.25s var(--ease) both;
 }
 
 .choice-btn:hover:not(:disabled) {
