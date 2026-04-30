@@ -1006,6 +1006,186 @@ body {
 .btn-submit-ft:hover:not(:disabled) { background: #2d4560; transform: translateY(-1px); }
 .btn-submit-ft:disabled { opacity: 0.5; cursor: default; }
 
+/* ============================================================
+   VOICE MODE
+   ============================================================ */
+
+/* NPC speaking state */
+.npc-speaking-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 32px 0;
+}
+
+.speaker-bars {
+  display: flex;
+  gap: 5px;
+  align-items: flex-end;
+  height: 32px;
+}
+
+.speaker-bars span {
+  display: block;
+  width: 6px;
+  background: var(--steel);
+  border-radius: 3px;
+  animation: barBounce 0.8s ease-in-out infinite;
+}
+.speaker-bars span:nth-child(1) { height: 14px; animation-delay: 0s;     }
+.speaker-bars span:nth-child(2) { height: 28px; animation-delay: 0.15s;  }
+.speaker-bars span:nth-child(3) { height: 20px; animation-delay: 0.3s;   }
+.speaker-bars span:nth-child(4) { height: 10px; animation-delay: 0.45s;  }
+
+@keyframes barBounce {
+  0%, 100% { transform: scaleY(1);   opacity: 0.7; }
+  50%       { transform: scaleY(1.8); opacity: 1;   }
+}
+
+.speaking-label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+.btn-skip-voice {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--muted);
+  cursor: pointer;
+  font-family: var(--font-display);
+  font-size: 14px;
+  letter-spacing: 0.08em;
+  padding: 8px 20px;
+  transition: all 0.15s;
+}
+.btn-skip-voice:hover { color: var(--white); border-color: rgba(255,255,255,0.2); }
+
+/* Mic input */
+.voice-input-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  padding: 16px 0;
+}
+
+.voice-transcript-box {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 14px 18px;
+  width: 100%;
+}
+
+.vt-label {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--muted);
+  letter-spacing: 0.2em;
+  margin-bottom: 6px;
+}
+
+.vt-text {
+  font-size: 15px;
+  color: var(--white);
+  line-height: 1.5;
+  font-style: italic;
+}
+
+.mic-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.btn-mic {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: var(--steel);
+  border: 3px solid rgba(255,255,255,0.15);
+  color: var(--white);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+}
+
+.btn-mic:hover { background: #2d4560; transform: scale(1.05); }
+
+.btn-mic.recording {
+  background: var(--crimson);
+  border-color: rgba(230,57,70,0.5);
+  box-shadow: 0 0 0 8px rgba(230,57,70,0.15), 0 0 0 16px rgba(230,57,70,0.07);
+  animation: micPulse 1s ease-in-out infinite;
+}
+
+@keyframes micPulse {
+  0%, 100% { box-shadow: 0 0 0 8px rgba(230,57,70,0.15), 0 0 0 16px rgba(230,57,70,0.07); }
+  50%       { box-shadow: 0 0 0 14px rgba(230,57,70,0.2), 0 0 0 24px rgba(230,57,70,0.05); }
+}
+
+.mic-hint, .mic-listening {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+.mic-listening { color: var(--crimson); animation: blink 1s step-end infinite; }
+@keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+.voice-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.btn-rerecord {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--muted);
+  cursor: pointer;
+  font-family: var(--font-display);
+  font-size: 16px;
+  letter-spacing: 0.08em;
+  padding: 10px 20px;
+  transition: all 0.15s;
+}
+.btn-rerecord:hover { color: var(--white); border-color: rgba(255,255,255,0.2); }
+
+.btn-use-voice {
+  background: var(--steel);
+  border: none;
+  border-radius: 6px;
+  color: var(--white);
+  cursor: pointer;
+  font-family: var(--font-display);
+  font-size: 16px;
+  letter-spacing: 0.08em;
+  padding: 10px 24px;
+  transition: background 0.15s, transform 0.15s;
+}
+.btn-use-voice:hover { background: #2d4560; transform: translateY(-1px); }
+
+.voice-error {
+  font-size: 14px;
+  color: var(--crimson);
+  text-align: center;
+  padding: 24px 0;
+}
+
 /* Score float */
 .score-float {
   font-family: var(--font-mono);

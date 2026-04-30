@@ -180,7 +180,10 @@ function openSetup(scenario) {
 }
 
 function initSetup() {
-  document.getElementById('back-to-home').addEventListener('click', () => showScreen('screen-home'));
+  document.getElementById('back-to-home').addEventListener('click', () => {
+    window.speechSynthesis && window.speechSynthesis.cancel();
+    showScreen('screen-home');
+  });
 
   document.querySelectorAll('.archetype-card').forEach(card => {
     card.addEventListener('click', () => {
@@ -247,6 +250,8 @@ const game = {
   walkedOut: false,
 
   start(scenarioId, archetypeId, mode, trainerName) {
+    window.speechSynthesis && window.speechSynthesis.cancel();
+
     this.scenario    = window.SCENARIOS[scenarioId];
     this.archetype   = window.ARCHETYPES[archetypeId];
     this.scenarioId  = scenarioId;
@@ -259,12 +264,9 @@ const game = {
     this.scoreByCategory = { DISARM: 0, GAP: 0, ANCHOR: 0, CLOSE: 0, OBJECTION: 0 };
     this.walkedOut   = false;
 
-    // Set NPC avatar color
     const sil = document.getElementById('npc-silhouette');
     sil.style.background = `radial-gradient(circle at 35% 35%, ${this.archetype.color}, rgba(0,0,0,0.8))`;
-
-    document.getElementById('npc-archetype-name').textContent =
-      this.archetype.name.toUpperCase();
+    document.getElementById('npc-archetype-name').textContent = this.archetype.name.toUpperCase();
 
     showScreen('screen-play');
     this.renderTurn();
@@ -280,18 +282,24 @@ const game = {
 
   renderTurn() {
     const turn = this.currentTurn;
-    const gs = this.gameState();
+    const gs   = this.gameState();
 
     document.getElementById('turn-number').textContent = this.turnIndex + 1;
     document.getElementById('turn-total').textContent  = this.scenario.totalTurns;
 
     const npcLine = turn.getNpcLine(gs);
     document.getElementById('npc-dialogue-text').textContent = `"${npcLine}"`;
-
     document.getElementById('feedback-area').style.display = 'none';
 
-    const choices = turn.getChoices(gs);
-    this.renderChoices(choices);
+    const area = document.getElementById('choices-area');
+    area.innerHTML = '';
+
+    if (this.mode === 'voice') {
+      this.startVoiceTurn(npcLine, area);
+    } else {
+      const choices = turn.getChoices(gs);
+      this.renderChoices(choices);
+    }
 
     this.updateMoodDisplay(false);
     this.updateScoreDisplay();
@@ -342,6 +350,166 @@ const game = {
       if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) submit();
     });
   },
+
+  // ---- VOICE MODE ----
+
+  getVoiceConfig() {
+    const map = {
+      skeptic:      { pitch: 0.9, rate: 0.95 },
+      price_shopper: { pitch: 0.9, rate: 0.95 },
+      dream_client:  { pitch: 1.1, rate: 1.05 },
+      ghost_spouse:  { pitch: 1.0, rate: 1.0  },
+      overthinker:   { pitch: 1.0, rate: 1.0  }
+    };
+    return map[this.archetypeId] || { pitch: 1.0, rate: 1.0 };
+  },
+
+  startVoiceTurn(npcLine, area) {
+    area.innerHTML = `
+      <div class="npc-speaking-state" id="npc-speaking-state">
+        <div class="speaker-bars"><span></span><span></span><span></span><span></span></div>
+        <p class="speaking-label">NPC speaking...</p>
+        <button class="btn-skip-voice" id="btn-skip-voice">SKIP ↓</button>
+      </div>
+    `;
+
+    const proceed = () => {
+      if (area.contains(document.getElementById('npc-speaking-state'))) {
+        this.renderVoiceMicInput(area);
+      }
+    };
+
+    document.getElementById('btn-skip-voice').addEventListener('click', () => {
+      window.speechSynthesis.cancel();
+      proceed();
+    });
+
+    const utter   = new SpeechSynthesisUtterance(npcLine);
+    const cfg     = this.getVoiceConfig();
+    utter.pitch   = cfg.pitch;
+    utter.rate    = cfg.rate;
+    utter.onend   = proceed;
+    utter.onerror = proceed; // fallback on error
+
+    // Fallback: some browsers never fire onend for long utterances
+    const timeout = setTimeout(proceed, (npcLine.length / 12) * 1000 + 4000);
+    utter.onend = () => { clearTimeout(timeout); proceed(); };
+
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(utter);
+  },
+
+  renderVoiceMicInput(area) {
+    area.innerHTML = `
+      <div class="voice-input-wrap">
+        <div class="voice-transcript-box" id="voice-transcript-box" style="display:none">
+          <p class="vt-label">YOU SAID:</p>
+          <p class="vt-text" id="vt-text"></p>
+        </div>
+        <div class="mic-wrap" id="mic-wrap">
+          <button class="btn-mic" id="btn-mic" aria-label="Press and hold to record">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm-1 1.93c-3.94-.49-7-3.85-7-7.93H2c0 4.97 3.53 9.11 8 9.9V22h4v-4.07c4.47-.79 8-4.93 8-9.9h-2c0 4.07-3.06 7.43-7 7.93V16h-2v-.07z"/>
+            </svg>
+          </button>
+          <p class="mic-hint" id="mic-hint">PRESS & HOLD TO SPEAK</p>
+          <p class="mic-listening" id="mic-listening" style="display:none">LISTENING...</p>
+        </div>
+        <div class="voice-actions" id="voice-actions" style="display:none">
+          <button class="btn-rerecord" id="btn-rerecord">↺ RE-RECORD</button>
+          <button class="btn-use-voice" id="btn-use-voice">USE THIS →</button>
+        </div>
+      </div>
+    `;
+
+    const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRec) {
+      area.innerHTML = '<p class="voice-error">Voice mode requires Chrome, Edge, or Safari.</p>';
+      return;
+    }
+
+    let recognition   = null;
+    let finalText     = '';
+    let isHolding     = false;
+
+    const micBtn      = document.getElementById('btn-mic');
+    const hint        = document.getElementById('mic-hint');
+    const listening   = document.getElementById('mic-listening');
+    const vtBox       = document.getElementById('voice-transcript-box');
+    const vtText      = document.getElementById('vt-text');
+    const actions     = document.getElementById('voice-actions');
+
+    const startRec = () => {
+      if (isHolding) return;
+      isHolding   = true;
+      finalText   = '';
+      vtText.textContent = '';
+
+      recognition = new SpeechRec();
+      recognition.continuous      = true;
+      recognition.interimResults  = true;
+      recognition.lang            = 'en-US';
+
+      recognition.onresult = (e) => {
+        let interim = '';
+        let fin     = '';
+        for (let i = e.resultIndex; i < e.results.length; i++) {
+          if (e.results[i].isFinal) fin    += e.results[i][0].transcript;
+          else                      interim += e.results[i][0].transcript;
+        }
+        if (fin) finalText += fin;
+        vtText.textContent = (finalText + interim).trim();
+        if (vtText.textContent) { vtBox.style.display = 'block'; }
+      };
+
+      recognition.onerror = () => { if (isHolding) stopRec(); };
+      // Auto-restart if browser ends early while still holding
+      recognition.onend   = () => { if (isHolding) recognition.start(); };
+
+      recognition.start();
+      micBtn.classList.add('recording');
+      hint.style.display      = 'none';
+      listening.style.display = 'block';
+    };
+
+    const stopRec = () => {
+      if (!isHolding) return;
+      isHolding = false;
+      if (recognition) { recognition.onend = null; recognition.stop(); recognition = null; }
+
+      micBtn.classList.remove('recording');
+      listening.style.display = 'none';
+
+      if (finalText.trim()) {
+        actions.style.display = 'flex';
+        micBtn.style.display  = 'none';
+      } else {
+        hint.style.display    = 'block';
+      }
+    };
+
+    micBtn.addEventListener('mousedown',  (e) => { e.preventDefault(); startRec(); });
+    micBtn.addEventListener('mouseup',    stopRec);
+    micBtn.addEventListener('mouseleave', stopRec);
+    micBtn.addEventListener('touchstart', (e) => { e.preventDefault(); startRec(); }, { passive: false });
+    micBtn.addEventListener('touchend',   stopRec);
+
+    document.getElementById('btn-rerecord').addEventListener('click', () => {
+      finalText              = '';
+      vtText.textContent     = '';
+      vtBox.style.display    = 'none';
+      actions.style.display  = 'none';
+      micBtn.style.display   = '';
+      hint.style.display     = 'block';
+    });
+
+    document.getElementById('btn-use-voice').addEventListener('click', () => {
+      const text = finalText.trim();
+      if (text) this.scoreFreeText(text);
+    });
+  },
+
+  // ---- END VOICE MODE ----
 
   scoreFreeText(text) {
     const lower   = text.toLowerCase();
@@ -486,6 +654,7 @@ const game = {
   },
 
   endScenario() {
+    window.speechSynthesis && window.speechSynthesis.cancel();
     showEndScreen(this);
     this.submitScore();
   },
