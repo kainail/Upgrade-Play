@@ -301,6 +301,12 @@ const game = {
   renderChoices(choices) {
     const area = document.getElementById('choices-area');
     area.innerHTML = '';
+
+    if (this.mode === 'free_text') {
+      this.renderFreeTextInput(area);
+      return;
+    }
+
     choices.forEach((choice) => {
       const btn = document.createElement('button');
       btn.className = 'choice-btn';
@@ -308,6 +314,114 @@ const game = {
       btn.addEventListener('click', () => this.selectChoice(choice, btn));
       area.appendChild(btn);
     });
+  },
+
+  renderFreeTextInput(area) {
+    area.innerHTML = `
+      <textarea class="ft-textarea" id="ft-textarea"
+        placeholder="Type your response..." rows="4"></textarea>
+      <div class="ft-hint">Keywords matched against the model answer — be specific.</div>
+      <button class="btn-submit-ft" id="btn-submit-ft">SUBMIT RESPONSE</button>
+    `;
+    const ta  = area.querySelector('#ft-textarea');
+    const btn = area.querySelector('#btn-submit-ft');
+
+    ta.focus();
+
+    const submit = () => {
+      const text = ta.value.trim();
+      if (!text) { ta.classList.add('ft-empty'); return; }
+      ta.classList.remove('ft-empty');
+      btn.disabled = true;
+      ta.disabled  = true;
+      this.scoreFreeText(text);
+    };
+
+    btn.addEventListener('click', submit);
+    ta.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) submit();
+    });
+  },
+
+  scoreFreeText(text) {
+    const lower   = text.toLowerCase();
+    const ftCfg   = window.FREE_TEXT[this.scenarioId][this.turnIndex];
+    const cfg     = ftCfg.getFreeText(this.gameState());
+
+    const hitWatch = cfg.watchOut.some(kw => lower.includes(kw.toLowerCase()));
+    const hitMust  = cfg.mustHit.some(kw  => lower.includes(kw.toLowerCase()));
+
+    let points, moodDelta, quality, feedback;
+
+    if (hitWatch) {
+      points    = -3;
+      moodDelta = -7;
+      quality   = 'bad';
+      feedback  = cfg.feedbackNegative;
+    } else if (hitMust) {
+      points    = 10;
+      moodDelta = 5;
+      quality   = 'best';
+      feedback  = cfg.feedbackPositive;
+    } else {
+      points    = 3;
+      moodDelta = 1;
+      quality   = 'mediocre';
+      feedback  = cfg.feedbackFallback;
+    }
+
+    // Show what was matched
+    const matched = hitWatch
+      ? cfg.watchOut.filter(kw => lower.includes(kw.toLowerCase()))
+      : hitMust
+        ? cfg.mustHit.filter(kw => lower.includes(kw.toLowerCase()))
+        : [];
+
+    const matchNote = matched.length
+      ? ` [matched: "${matched[0]}"]`
+      : '';
+
+    // Apply to game state
+    const raw = moodDelta;
+    const modded = raw >= 0
+      ? Math.round(raw * this.archetype.posMult)
+      : Math.round(raw * this.archetype.negMult);
+
+    this.score += points;
+    const cat = this.currentTurn.getChoices(this.gameState())[0]?.category || 'DISARM';
+    this.scoreByCategory[cat] = (this.scoreByCategory[cat] || 0) + points;
+    this.mood = Math.max(0, Math.min(100, this.mood + modded));
+
+    spawnScoreFloat(points, document.getElementById('btn-submit-ft') || document.getElementById('choices-area'));
+    if (quality === 'bad') shakeNpc();
+    this.updateMoodDisplay(true);
+    this.updateScoreDisplay();
+    this.updateBreakdown();
+
+    if (this.mood <= 0) {
+      this.walkedOut = true;
+      this.showFreeTextFeedback(points, quality, feedback + matchNote, true);
+      return;
+    }
+
+    this.showFreeTextFeedback(points, quality, feedback + matchNote, false);
+  },
+
+  showFreeTextFeedback(points, quality, feedback, walkedOut) {
+    const area  = document.getElementById('feedback-area');
+    const badge = document.getElementById('feedback-score-badge');
+    const text  = document.getElementById('feedback-text');
+    const cont  = document.getElementById('btn-continue');
+
+    badge.textContent = (points >= 0 ? '+' : '') + points + ' pts';
+    badge.className   = `feedback-score-badge quality-${quality}`;
+    text.textContent  = walkedOut ? feedback + ' — They walked out.' : feedback;
+
+    const isLast = this.turnIndex >= this.scenario.turns.length - 1;
+    cont.textContent = walkedOut || isLast ? 'SEE RESULTS' : 'CONTINUE →';
+    cont.onclick = () => walkedOut ? this.endScenario() : this.advance();
+
+    area.style.display = 'flex';
   },
 
   selectChoice(choice, btn) {

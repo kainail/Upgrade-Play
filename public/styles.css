@@ -884,6 +884,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 10px;
+  width: 100%;
 }
 
 .choice-btn {
@@ -961,6 +962,49 @@ body {
   transition: background 0.15s, transform 0.15s;
 }
 .btn-continue:hover { background: #cc2f3b; transform: translateY(-1px); }
+
+/* Free text input */
+.ft-textarea {
+  width: 100%;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--white);
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.6;
+  padding: 14px 16px;
+  resize: vertical;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.ft-textarea:focus  { border-color: var(--crimson); }
+.ft-textarea.ft-empty { border-color: var(--crimson); }
+.ft-textarea:disabled { opacity: 0.6; cursor: default; }
+
+.ft-hint {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--muted);
+  letter-spacing: 0.08em;
+  margin-top: -4px;
+}
+
+.btn-submit-ft {
+  background: var(--steel);
+  border: none;
+  border-radius: 6px;
+  color: var(--white);
+  cursor: pointer;
+  font-family: var(--font-display);
+  font-size: 18px;
+  letter-spacing: 0.08em;
+  padding: 12px 28px;
+  align-self: flex-start;
+  transition: background 0.15s, transform 0.15s;
+}
+.btn-submit-ft:hover:not(:disabled) { background: #2d4560; transform: translateY(-1px); }
+.btn-submit-ft:disabled { opacity: 0.5; cursor: default; }
 
 /* Score float */
 .score-float {
