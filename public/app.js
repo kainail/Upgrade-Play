@@ -506,7 +506,11 @@ const game = {
       micBtn.classList.remove('recording');
       listening.style.display = 'none';
 
-      if (finalText.trim()) {
+      // Fall back to whatever's visible in the transcript box — Web Speech often never
+      // marks short utterances "final" before stop(), leaving finalText empty.
+      const captured = finalText.trim() || vtText.textContent.trim();
+      if (captured) {
+        finalText = captured;
         actions.style.display = 'flex';
         micBtn.style.display  = 'none';
       } else {
