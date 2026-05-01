@@ -2,6 +2,8 @@ const express = require('express');
 const Database = require('better-sqlite3');
 const path = require('path');
 const fs = require('fs');
+const { pipeline } = require('stream/promises');
+const { Readable } = require('stream');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -140,6 +142,50 @@ app.get('/api/leaderboard/me', (req, res) => {
   `).all(trainer_name);
 
   res.json({ stats, history });
+});
+
+// POST /api/tts — proxy to ElevenLabs (keeps API key server-side)
+app.post('/api/tts', async (req, res) => {
+  const { text } = req.body || {};
+  if (!text || typeof text !== 'string') {
+    return res.status(400).json({ error: 'text required' });
+  }
+  const apiKey  = process.env.ELEVENLABS_API_KEY;
+  const voiceId = process.env.ELEVENLABS_VOICE_ID;
+  if (!apiKey || !voiceId) {
+    return res.status(500).json({ error: 'ElevenLabs not configured' });
+  }
+
+  try {
+    const upstream = await fetch(
+      `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}/stream?output_format=mp3_44100_128`,
+      {
+        method: 'POST',
+        headers: {
+          'xi-api-key': apiKey,
+          'Content-Type': 'application/json',
+          'Accept': 'audio/mpeg'
+        },
+        body: JSON.stringify({
+          text,
+          model_id: 'eleven_flash_v2_5',
+          voice_settings: { stability: 0.5, similarity_boost: 0.75 }
+        })
+      }
+    );
+
+    if (!upstream.ok) {
+      const errText = await upstream.text();
+      console.error('ElevenLabs error:', upstream.status, errText);
+      return res.status(502).json({ error: 'TTS upstream error' });
+    }
+
+    res.setHeader('Content-Type', 'audio/mpeg');
+    await pipeline(Readable.fromWeb(upstream.body), res);
+  } catch (e) {
+    console.error('TTS error:', e);
+    if (!res.headersSent) res.status(500).json({ error: 'TTS failed' });
+  }
 });
 
 app.listen(PORT, () => {

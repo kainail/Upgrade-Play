@@ -181,7 +181,7 @@ function openSetup(scenario) {
 
 function initSetup() {
   document.getElementById('back-to-home').addEventListener('click', () => {
-    window.speechSynthesis && window.speechSynthesis.cancel();
+    game.stopAudio();
     showScreen('screen-home');
   });
 
@@ -204,8 +204,7 @@ function initSetup() {
   document.querySelectorAll('.btn-mode').forEach(btn => {
     btn.addEventListener('click', () => {
       if (btn.dataset.mode === 'voice') {
-        const hasVoice = ('speechSynthesis' in window) &&
-                         ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window);
+        const hasVoice = ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window);
         if (!hasVoice) {
           alert('Voice mode requires Chrome, Edge, or Safari. Please switch browsers or use text mode.');
           return;
@@ -250,7 +249,7 @@ const game = {
   walkedOut: false,
 
   start(scenarioId, archetypeId, mode, trainerName) {
-    window.speechSynthesis && window.speechSynthesis.cancel();
+    this.stopAudio();
 
     this.scenario    = window.SCENARIOS[scenarioId];
     this.archetype   = window.ARCHETYPES[archetypeId];
@@ -360,15 +359,44 @@ const game = {
 
   // ---- VOICE MODE ----
 
-  getVoiceConfig() {
-    const map = {
-      skeptic:      { pitch: 0.9, rate: 0.95 },
-      price_shopper: { pitch: 0.9, rate: 0.95 },
-      dream_client:  { pitch: 1.1, rate: 1.05 },
-      ghost_spouse:  { pitch: 1.0, rate: 1.0  },
-      overthinker:   { pitch: 1.0, rate: 1.0  }
-    };
-    return map[this.archetypeId] || { pitch: 1.0, rate: 1.0 };
+  stopAudio() {
+    if (this.currentAudio) {
+      this.currentAudio.pause();
+      if (this.currentAudio.src.startsWith('blob:')) {
+        URL.revokeObjectURL(this.currentAudio.src);
+      }
+      this.currentAudio.src = '';
+      this.currentAudio = null;
+    }
+    if (this.currentTtsAbort) {
+      this.currentTtsAbort.abort();
+      this.currentTtsAbort = null;
+    }
+  },
+
+  async playElevenLabsAudio(text) {
+    this.stopAudio();
+    const ctrl = new AbortController();
+    this.currentTtsAbort = ctrl;
+
+    const res = await fetch('/api/tts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text }),
+      signal: ctrl.signal
+    });
+    if (!res.ok) throw new Error('TTS request failed: ' + res.status);
+
+    const blob  = await res.blob();
+    const url   = URL.createObjectURL(blob);
+    const audio = new Audio(url);
+    this.currentAudio = audio;
+
+    return new Promise((resolve, reject) => {
+      audio.onended = () => { this.stopAudio(); resolve(); };
+      audio.onerror = () => { this.stopAudio(); reject(new Error('audio playback error')); };
+      audio.play().catch(reject);
+    });
   },
 
   startVoiceTurn(npcLine, area) {
@@ -387,23 +415,14 @@ const game = {
     };
 
     document.getElementById('btn-skip-voice').addEventListener('click', () => {
-      window.speechSynthesis.cancel();
+      this.stopAudio();
       proceed();
     });
 
-    const utter   = new SpeechSynthesisUtterance(npcLine);
-    const cfg     = this.getVoiceConfig();
-    utter.pitch   = cfg.pitch;
-    utter.rate    = cfg.rate;
-    utter.onend   = proceed;
-    utter.onerror = proceed; // fallback on error
-
-    // Fallback: some browsers never fire onend for long utterances
-    const timeout = setTimeout(proceed, (npcLine.length / 12) * 1000 + 4000);
-    utter.onend = () => { clearTimeout(timeout); proceed(); };
-
-    window.speechSynthesis.cancel();
-    window.speechSynthesis.speak(utter);
+    this.playElevenLabsAudio(npcLine).then(proceed).catch((e) => {
+      console.error(e);
+      proceed();
+    });
   },
 
   renderVoiceMicInput(area) {
@@ -661,7 +680,7 @@ const game = {
   },
 
   endScenario() {
-    window.speechSynthesis && window.speechSynthesis.cancel();
+    this.stopAudio();
     showEndScreen(this);
     this.submitScore();
   },
