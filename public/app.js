@@ -204,9 +204,9 @@ function initSetup() {
   document.querySelectorAll('.btn-mode').forEach(btn => {
     btn.addEventListener('click', () => {
       if (btn.dataset.mode === 'voice') {
-        const hasVoice = ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window);
+        const hasVoice = !!(window.MediaRecorder && navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
         if (!hasVoice) {
-          alert('Voice mode requires Chrome, Edge, or Safari. Please switch browsers or use text mode.');
+          alert('Voice mode requires a modern browser (Chrome, Edge, Safari, Firefox).');
           return;
         }
       }
@@ -448,15 +448,17 @@ const game = {
       </div>
     `;
 
-    const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRec) {
-      area.innerHTML = '<p class="voice-error">Voice mode requires Chrome, Edge, or Safari.</p>';
+    if (!window.MediaRecorder || !navigator.mediaDevices?.getUserMedia) {
+      area.innerHTML = '<p class="voice-error">Voice mode requires a modern browser (Chrome, Edge, Safari, Firefox).</p>';
       return;
     }
 
-    let recognition   = null;
-    let finalText     = '';
-    let isHolding     = false;
+    let mediaRecorder  = null;
+    let audioChunks    = [];
+    let stopPromise    = null;
+    let finalText      = '';
+    let isHolding      = false;
+    let isTranscribing = false;
 
     const micBtn      = document.getElementById('btn-mic');
     const hint        = document.getElementById('mic-hint');
@@ -465,56 +467,97 @@ const game = {
     const vtText      = document.getElementById('vt-text');
     const actions     = document.getElementById('voice-actions');
 
-    const startRec = () => {
-      if (isHolding) return;
+    const startRec = async () => {
+      if (isHolding || isTranscribing) return;
+
+      let stream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      } catch (e) {
+        console.error('mic access failed', e);
+        alert('Microphone access required for voice mode. Enable it in your browser site settings.');
+        return;
+      }
+
       isHolding   = true;
       finalText   = '';
-      vtText.textContent = '';
+      audioChunks = [];
 
-      recognition = new SpeechRec();
-      recognition.continuous      = true;
-      recognition.interimResults  = true;
-      recognition.lang            = 'en-US';
-
-      recognition.onresult = (e) => {
-        let interim = '';
-        let fin     = '';
-        for (let i = e.resultIndex; i < e.results.length; i++) {
-          if (e.results[i].isFinal) fin    += e.results[i][0].transcript;
-          else                      interim += e.results[i][0].transcript;
-        }
-        if (fin) finalText += fin;
-        vtText.textContent = (finalText + interim).trim();
-        if (vtText.textContent) { vtBox.style.display = 'block'; }
+      mediaRecorder = new MediaRecorder(stream);
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data && e.data.size > 0) audioChunks.push(e.data);
       };
+      stopPromise = new Promise((resolve) => {
+        mediaRecorder.onstop = () => {
+          stream.getTracks().forEach((t) => t.stop()); // release mic
+          resolve();
+        };
+      });
 
-      recognition.onerror = () => { if (isHolding) stopRec(); };
-      // Auto-restart if browser ends early while still holding
-      recognition.onend   = () => { if (isHolding) recognition.start(); };
-
-      recognition.start();
+      mediaRecorder.start();
       micBtn.classList.add('recording');
       hint.style.display      = 'none';
       listening.style.display = 'block';
     };
 
-    const stopRec = () => {
+    const stopRec = async () => {
       if (!isHolding) return;
       isHolding = false;
-      if (recognition) { recognition.onend = null; recognition.stop(); recognition = null; }
+
+      if (!mediaRecorder || mediaRecorder.state === 'inactive') {
+        micBtn.classList.remove('recording');
+        listening.style.display = 'none';
+        return;
+      }
+
+      mediaRecorder.stop();
+      await stopPromise;
 
       micBtn.classList.remove('recording');
       listening.style.display = 'none';
 
-      // Fall back to whatever's visible in the transcript box — Web Speech often never
-      // marks short utterances "final" before stop(), leaving finalText empty.
-      const captured = finalText.trim() || vtText.textContent.trim();
-      if (captured) {
-        finalText = captured;
-        actions.style.display = 'flex';
-        micBtn.style.display  = 'none';
-      } else {
-        hint.style.display    = 'block';
+      if (audioChunks.length === 0) {
+        hint.style.display = 'block';
+        return;
+      }
+
+      const mime = mediaRecorder.mimeType || 'audio/webm';
+      const blob = new Blob(audioChunks, { type: mime });
+
+      isTranscribing = true;
+      vtBox.style.display = 'block';
+      vtText.textContent  = 'transcribing...';
+
+      try {
+        const res = await fetch('/api/stt', {
+          method: 'POST',
+          headers: { 'Content-Type': mime },
+          body: blob
+        });
+        if (!res.ok) throw new Error('STT request failed: ' + res.status);
+        const data = await res.json();
+        const text = (data.text || '').trim();
+
+        if (text) {
+          finalText = text;
+          vtText.textContent = text;
+          actions.style.display = 'flex';
+          micBtn.style.display  = 'none';
+        } else {
+          vtBox.style.display = 'none';
+          hint.style.display  = 'block';
+        }
+      } catch (e) {
+        console.error('transcription failed', e);
+        vtText.textContent = 'transcription failed — please try again';
+        setTimeout(() => {
+          if (vtText.textContent.startsWith('transcription failed')) {
+            vtBox.style.display = 'none';
+            hint.style.display  = 'block';
+          }
+        }, 1800);
+      } finally {
+        isTranscribing = false;
       }
     };
 

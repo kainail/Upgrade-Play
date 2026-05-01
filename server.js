@@ -144,6 +144,46 @@ app.get('/api/leaderboard/me', (req, res) => {
   res.json({ stats, history });
 });
 
+// POST /api/stt — proxy to ElevenLabs Scribe (transcribe audio blob)
+app.post('/api/stt',
+  express.raw({ type: 'audio/*', limit: '25mb' }),
+  async (req, res) => {
+    if (!req.body || req.body.length === 0) {
+      return res.status(400).json({ error: 'audio required' });
+    }
+    const apiKey = process.env.ELEVENLABS_API_KEY;
+    if (!apiKey) {
+      return res.status(500).json({ error: 'ElevenLabs not configured' });
+    }
+
+    try {
+      const contentType = req.headers['content-type'] || 'audio/webm';
+      const blob = new Blob([req.body], { type: contentType });
+      const form = new FormData();
+      form.append('file', blob, 'audio.webm');
+      form.append('model_id', 'scribe_v1');
+
+      const upstream = await fetch('https://api.elevenlabs.io/v1/speech-to-text', {
+        method: 'POST',
+        headers: { 'xi-api-key': apiKey },
+        body: form
+      });
+
+      if (!upstream.ok) {
+        const errText = await upstream.text();
+        console.error('Scribe error:', upstream.status, errText);
+        return res.status(502).json({ error: 'STT upstream error' });
+      }
+
+      const json = await upstream.json();
+      res.json({ text: (json.text || '').trim() });
+    } catch (e) {
+      console.error('STT error:', e);
+      if (!res.headersSent) res.status(500).json({ error: 'STT failed' });
+    }
+  }
+);
+
 // POST /api/tts — proxy to ElevenLabs (keeps API key server-side)
 app.post('/api/tts', async (req, res) => {
   const { text } = req.body || {};
